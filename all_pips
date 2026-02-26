@@ -1,0 +1,10 @@
+pip install pandas
+pip install sentence-transformers
+pip install speechrecognition
+pip install pycaw
+pip install psutil
+pip install winshell
+pip install pyttsx3
+pip install thefuzz[speedup]
+pip install spacy
+pip install playsound
