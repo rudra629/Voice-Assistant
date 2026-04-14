@@ -6,71 +6,87 @@ from ctypes import cast, POINTER
 from comtypes import CLSCTX_ALL
 from voice_engine import speak, listen, set_hotword, get_hotword
 import pyautogui
-import time
 import os
 import datetime
 import webbrowser
 import subprocess
+from langchain.tools import tool
 
-def empty_recycle_bin():
+@tool
+def empty_recycle_bin() -> str:
+    """Empties the Windows recycle bin."""
     winshell.recycle_bin().empty(confirm=False, show_progress=False, sound=True)
     speak("Recycle bin emptied.")
+    return "Recycle bin emptied successfully."
 
-def set_volume(level):
+@tool
+def set_volume(level: int) -> str:
+    """Sets the system volume. Input should be an integer between 0 and 100."""
     devices = AudioUtilities.GetSpeakers()
     interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
     volume = cast(interface, POINTER(IAudioEndpointVolume))
     volume.SetMasterVolumeLevelScalar(level / 100, None)
     speak(f"Volume set to {level} percent.")
+    return f"Volume successfully set to {level}%."
 
-def check_battery():
+@tool
+def check_battery() -> str:
+    """Checks the current battery percentage and charging status of the PC."""
     battery = psutil.sensors_battery()
     percent = battery.percent
     plugged = battery.power_plugged
     status = "plugged in" if plugged else "not charging"
-    speak(f"Battery is at {percent}% and is currently {status}.")
+    response = f"Battery is at {percent}% and is currently {status}."
+    speak(response)
+    return response
 
-def get_current_time():
+@tool
+def get_current_time() -> str:
+    """Gets the current local time."""
     now = datetime.datetime.now().strftime("%I:%M %p")
     speak(f"The current time is {now}")
+    return f"The time is {now}."
 
-def check_cpu_usage():
+@tool
+def check_cpu_usage() -> str:
+    """Checks the current CPU usage percentage."""
     cpu_percent = psutil.cpu_percent(interval=1)
     speak(f"The current CPU usage is {cpu_percent} percent.")
+    return f"CPU usage is at {cpu_percent}%."
 
-def open_file(file_path):
+@tool
+def open_file(file_path: str) -> str:
+    """Opens a file at the specified absolute file path."""
     try:
         os.startfile(file_path)
-        speak(f"Opening {file_path}")
-    except FileNotFoundError:
-        speak(f"Sorry, I could not find the file {file_path}.")
+        speak(f"Opening file.")
+        return f"Successfully opened {file_path}."
     except Exception as e:
-        speak(f"An error occurred while trying to open the file: {e}")
+        return f"Error opening file: {e}"
 
-def create_folder(folder_name):
+@tool
+def create_folder(folder_name: str) -> str:
+    """Creates a new directory/folder with the given name or path."""
     try:
         os.makedirs(folder_name)
-        speak(f"Created folder named {folder_name}.")
-    except FileExistsError:
-        speak(f"The folder {folder_name} already exists.")
+        speak(f"Created folder {folder_name}.")
+        return f"Folder {folder_name} created."
     except Exception as e:
-        speak(f"An error occurred while creating the folder: {e}")
+        return f"Error creating folder: {e}"
 
-def delete_file(file_path):
-    speak(f"Are you sure you want to delete {file_path}?")
-    confirmation = listen()
-    if "yes" in confirmation.lower():
-        try:
-            os.remove(file_path)
-            speak(f"Deleted the file {file_path}.")
-        except FileNotFoundError:
-            speak(f"Sorry, I could not find the file {file_path}.")
-        except Exception as e:
-            speak(f"An error occurred while trying to delete the file: {e}")
-    else:
-        speak("File deletion canceled.")
+@tool
+def delete_file(file_path: str) -> str:
+    """Deletes a file at the specified path. ONLY use if the user explicitly asks to delete."""
+    try:
+        os.remove(file_path)
+        speak("File deleted.")
+        return f"Deleted {file_path}."
+    except Exception as e:
+        return f"Error deleting file: {e}"
 
-def open_application(app_name):
+@tool
+def open_application(app_name: str) -> str:
+    """Opens a common application on the PC by name (e.g., 'notepad', 'chrome', 'spotify', 'word', 'excel')."""
     app_mapping = {
         "notepad": "notepad.exe",
         "chrome": "chrome.exe",
@@ -79,56 +95,82 @@ def open_application(app_name):
         "word": "winword.exe",
         "excel": "excel.exe"
     }
-
     app_exe = app_mapping.get(app_name.lower())
-    
     if app_exe:
         try:
             subprocess.Popen(app_exe)
             speak(f"Opening {app_name}.")
-            return
+            return f"Opened {app_name}."
         except FileNotFoundError:
             pass
     try:
         subprocess.Popen(f'start {app_name}', shell=True)
         speak(f"Opening {app_name}.")
+        return f"Opened {app_name}."
     except Exception as e:
-        speak(f"Sorry, I could not find or open the application {app_name}.")
-        print(f"Error: {e}")
+        return f"Failed to open {app_name}. Error: {e}"
 
-def close_active_window():
+@tool
+def close_active_window() -> str:
+    """Closes the currently active window on the screen."""
     pyautogui.hotkey('alt', 'f4')
-    speak("Closing the active window.")
+    speak("Closing active window.")
+    return "Active window closed."
 
-def search_google(query):
+@tool
+def search_google(query: str) -> str:
+    """Searches Google in the default web browser for the provided query."""
     webbrowser.open(f"https://www.google.com/search?q={query}")
-    speak(f"Searching Google for {query}.")
+    speak(f"Searching for {query}.")
+    return f"Opened Google search for {query}."
 
-def open_website(url):
+@tool
+def open_website(url: str) -> str:
+    """Opens a specific URL in the default web browser."""
+    if not url.startswith("http"):
+        url = "https://" + url
     webbrowser.open(url)
-    speak(f"Opening {url}.")
+    speak("Opening website.")
+    return f"Opened {url}."
 
-def play_pause():
+@tool
+def play_pause() -> str:
+    """Toggles media playback (Play/Pause) for active media players like Spotify."""
     pyautogui.press('playpause')
-    speak("Toggling playback.")
+    speak("Toggled playback.")
+    return "Media play/pause toggled."
 
-def next_track():
+@tool
+def next_track() -> str:
+    """Skips to the next media track."""
     pyautogui.press('nexttrack')
-    speak("Skipping to the next track.")
+    speak("Next track.")
+    return "Skipped to next track."
 
-def previous_track():
+@tool
+def previous_track() -> str:
+    """Returns to the previous media track."""
     pyautogui.press('prevtrack')
-    speak("Returning to the previous track.")
+    speak("Previous track.")
+    return "Returned to previous track."
 
-def maximize_window():
+@tool
+def maximize_window() -> str:
+    """Maximizes the currently active window."""
     pyautogui.hotkey('win', 'up')
-    speak("Maximizing the active window.")
+    speak("Window maximized.")
+    return "Window maximized."
 
-def minimize_window():
+@tool
+def minimize_window() -> str:
+    """Minimizes the currently active window."""
     pyautogui.hotkey('win', 'down')
-    speak("Minimizing the active window.")
+    speak("Window minimized.")
+    return "Window minimized."
 
-def change_hotword(new_hotword):
-    """Changes the hotword and provides confirmation."""
+@tool
+def change_hotword(new_hotword: str) -> str:
+    """Changes the assistant's wake word/hotword."""
     set_hotword(new_hotword)
-    speak(f"The hotword has been changed to {new_hotword}.")
+    speak(f"Hotword changed to {new_hotword}.")
+    return f"Hotword updated to {new_hotword}."
